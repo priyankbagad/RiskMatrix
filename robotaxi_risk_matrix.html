@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Matrix — Boston Autonomous Robotaxi Pilot</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #161920;
+    --surface2: #1e2230;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8eaf0;
+    --muted: #7a7f94;
+    --red: #e55c5c;
+    --orange: #e8933a;
+    --yellow: #d4b017;
+    --green: #5a9e52;
+    --red-bg: rgba(229,92,92,0.1);
+    --orange-bg: rgba(232,147,58,0.1);
+    --yellow-bg: rgba(212,176,23,0.1);
+    --green-bg: rgba(90,158,82,0.1);
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    padding: 32px 24px;
+  }
+
+  header {
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--border2);
+    padding-bottom: 20px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-left .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .header-left h1 {
+    font-family: var(--font-head);
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.1;
+  }
+
+  .header-left h1 span {
+    color: var(--red);
+  }
+
+  .btn-reset {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border2);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .btn-reset:hover { color: var(--text); border-color: var(--text); background: var(--surface2); }
+  .btn-reset:active { transform: scale(0.97); }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 780px) {
+    .main { grid-template-columns: 1fr; }
+  }
+
+  /* ---- MATRIX ---- */
+  .matrix-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .matrix-labels-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    padding-left: 44px;
+  }
+
+  .matrix-col-label {
+    flex: 1;
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+
+  .matrix-x-title {
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding-left: 44px;
+    margin-top: 6px;
+    padding-bottom: 4px;
+  }
+
+  .matrix-body {
+    display: flex;
+    gap: 6px;
+  }
+
+  .matrix-y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 28px;
+    padding-right: 4px;
+  }
+
+  .matrix-y-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1;
+  }
+
+  .matrix-y-title {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    align-self: center;
+    margin-right: 2px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 4px;
+    flex: 1;
+    aspect-ratio: 1/1;
+  }
+
+  .cell {
+    border-radius: 5px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 3px;
+    min-height: 52px;
+    transition: background 0.15s;
+  }
+
+  .cell.zone-critical { background: rgba(229,92,92,0.13); }
+  .cell.zone-high     { background: rgba(232,147,58,0.11); }
+  .cell.zone-medium   { background: rgba(212,176,23,0.09); }
+  .cell.zone-low      { background: rgba(90,158,82,0.09); }
+
+  /* ---- DOTS ---- */
+  .dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 8px;
+    font-weight: 500;
+    color: #fff;
+    cursor: pointer;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    transition: transform 0.18s, box-shadow 0.18s;
+    position: relative;
+    z-index: 2;
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  .dot.visible {
+    animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .dot.hidden-anim {
+    animation: popOut 0.22s ease-in forwards;
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes popOut {
+    from { opacity: 1; transform: scale(1); }
+    to   { opacity: 0; transform: scale(0); }
+  }
+
+  .dot:hover { transform: scale(1.25) !important; z-index: 10; }
+
+  .dot.active-dot { box-shadow: 0 0 0 3px rgba(255,255,255,0.3); transform: scale(1.15) !important; }
+
+  /* ---- LEGEND ---- */
+  .legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .legend-swatch {
+    width: 10px; height: 10px; border-radius: 2px;
+  }
+
+  /* ---- SIDEBAR ---- */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+  .sidebar-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .risk-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .risk-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    user-select: none;
+  }
+
+  .risk-item:hover { background: var(--surface2); border-color: var(--border2); transform: translateX(2px); }
+
+  .risk-item.active {
+    border-color: var(--item-color, #888);
+    background: var(--item-bg, var(--surface2));
+  }
+
+  .risk-dot-small {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+  .risk-item.active .risk-dot-small { transform: scale(1.4); }
+
+  .risk-item-text { flex: 1; }
+  .risk-item-id { font-size: 10px; color: var(--muted); }
+  .risk-item-name { font-size: 12px; color: var(--text); margin-top: 1px; }
+
+  .risk-score {
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font-mono);
+  }
+
+  /* ---- DETAIL PANEL ---- */
+  .detail-panel {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 18px;
+    min-height: 160px;
+    transition: all 0.2s;
+  }
+
+  .detail-empty {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .detail-header { margin-bottom: 14px; }
+  .detail-id { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 4px; }
+  .detail-name {
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .detail-scores {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .score-box {
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 8px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .score-box-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .score-box-val { font-size: 18px; font-weight: 500; margin-top: 2px; }
+
+  .detail-section { margin-bottom: 10px; }
+  .detail-section-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .detail-section-val { font-size: 12px; color: var(--text); line-height: 1.65; }
+
+  .level-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    margin-top: 4px;
+  }
+
+  /* TOOLTIP */
+  #tooltip {
+    position: fixed;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
+    z-index: 999;
+    max-width: 180px;
+    line-height: 1.5;
+  }
+
+  footer {
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="eyebrow">Northeastern University · CS7230 Risk Management</div>
+    <h1>Boston Autonomous Robotaxi Pilot<br><span>Risk Prioritization Matrix</span></h1>
+  </div>
+  <button class="btn-reset" id="resetBtn">↺ Reset Matrix</button>
+</header>
+
+<div class="main">
+
+  <!-- MATRIX -->
+  <div>
+    <div class="matrix-wrap">
+      <div class="matrix-labels-row">
+        <div style="width:16px;"></div>
+        <div class="matrix-col-label">1</div>
+        <div class="matrix-col-label">2</div>
+        <div class="matrix-col-label">3</div>
+        <div class="matrix-col-label">4</div>
+        <div class="matrix-col-label">5</div>
+      </div>
+      <div class="matrix-body">
+        <div style="display:flex;align-items:center;gap:4px;width:44px;flex-shrink:0;">
+          <div class="matrix-y-title">Probability</div>
+          <div class="matrix-y-axis" id="yAxis"></div>
+        </div>
+        <div class="grid" id="grid"></div>
+      </div>
+      <div class="matrix-x-title">Impact →</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--red)"></span>Critical ≥15</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--orange)"></span>High 10–14</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--yellow)"></span>Medium 5–9</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--green)"></span>Low &lt;5</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div class="detail-panel" id="detailPanel">
+      <div class="detail-empty">Click any risk in the list below — it will appear on the matrix and show details here.</div>
+    </div>
+
+    <div>
+      <div class="sidebar-label">All Risks</div>
+      <div class="risk-list" id="riskList"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>Risk Score = Probability (1–5) × Impact (1–5)</span>
+  <span>Interactive Demo · Click risks to reveal</span>
+</footer>
+
+<div id="tooltip"></div>
+
+<script>
+const risks = [
+  { id:'R1', name:'Sensor Failure',      p:4, i:5, score:20, level:'CRITICAL', color:'#e55c5c', response:'Redundant LiDAR + radar systems; failsafe stop protocol within 200ms of failure detection.', owner:'Engineering' },
+  { id:'R3', name:'Regulatory Delay',    p:4, i:4, score:16, level:'CRITICAL', color:'#e05050', response:'Dedicated regulatory liaison; phased permit strategy to avoid full operational stop.', owner:'Legal / Gov Affairs' },
+  { id:'R4', name:'Public Trust Crisis', p:3, i:5, score:15, level:'CRITICAL', color:'#e55c5c', response:'Real-time incident transparency dashboard; community advisory board engagement.', owner:'Communications' },
+  { id:'R2', name:'Cybersecurity Breach',p:2, i:5, score:10, level:'HIGH',     color:'#e8933a', response:'Zero-trust architecture; quarterly penetration testing; isolated OTA update channels.', owner:'Security' },
+  { id:'R6', name:'Mapping Errors',      p:3, i:3, score:9,  level:'MEDIUM',   color:'#d4b017', response:'Continuous HD map refresh; human patrol validation of edge cases weekly.', owner:'Operations' },
+  { id:'R8', name:'Union Opposition',    p:3, i:3, score:9,  level:'MEDIUM',   color:'#c8a815', response:'Labor transition fund; retraining program for displaced drivers.', owner:'HR / Community' },
+  { id:'R5', name:'Insurance Gap',       p:2, i:4, score:8,  level:'MEDIUM',   color:'#d4b017', response:'Partner with specialty AV insurer; self-insurance reserve of $5M minimum.', owner:'Finance' },
+  { id:'R7', name:'Supply Chain',        p:2, i:2, score:4,  level:'LOW',      color:'#5a9e52', response:'Multi-vendor sensor sourcing; 90-day critical parts buffer stock maintained.', owner:'Procurement' },
+];
+
+const levelBg = { CRITICAL:'rgba(229,92,92,0.15)', HIGH:'rgba(232,147,58,0.15)', MEDIUM:'rgba(212,176,23,0.12)', LOW:'rgba(90,158,82,0.12)' };
+const levelText = { CRITICAL:'#e55c5c', HIGH:'#e8933a', MEDIUM:'#d4b017', LOW:'#5a9e52' };
+
+function zoneClass(prob, impact) {
+  const s = prob * impact;
+  if (s >= 15) return 'zone-critical';
+  if (s >= 10) return 'zone-high';
+  if (s >= 5)  return 'zone-medium';
+  return 'zone-low';
+}
+
+const grid = document.getElementById('grid');
+const yAxis = document.getElementById('yAxis');
+const cells = {};
+
+// Build Y axis labels
+for (let p = 5; p >= 1; p--) {
+  const l = document.createElement('div');
+  l.className = 'matrix-y-label';
+  l.textContent = p;
+  yAxis.appendChild(l);
+}
+
+// Build grid cells
+for (let prob = 5; prob >= 1; prob--) {
+  for (let imp = 1; imp <= 5; imp++) {
+    const cell = document.createElement('div');
+    cell.className = `cell ${zoneClass(prob, imp)}`;
+    cell.dataset.p = prob;
+    cell.dataset.i = imp;
+    grid.appendChild(cell);
+    cells[`${prob}-${imp}`] = cell;
+  }
+}
+
+let activeRisk = null;
+const dotEls = {};
+
+function addDot(r) {
+  const cell = cells[`${r.p}-${r.i}`];
+  if (!cell) return;
+  const existing = dotEls[r.id];
+  if (existing) return;
+
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.textContent = r.id;
+  dot.style.background = r.color;
+  dot.dataset.id = r.id;
+
+  dot.addEventListener('mouseenter', e => showTooltip(e, r));
+  dot.addEventListener('mousemove', moveTooltip);
+  dot.addEventListener('mouseleave', hideTooltip);
+  dot.addEventListener('click', () => selectRisk(r));
+
+  cell.appendChild(dot);
+  dotEls[r.id] = dot;
+  requestAnimationFrame(() => dot.classList.add('visible'));
+}
+
+function removeDot(r) {
+  const dot = dotEls[r.id];
+  if (!dot) return;
+  dot.classList.remove('visible');
+  dot.classList.add('hidden-anim');
+  dot.addEventListener('animationend', () => {
+    dot.remove();
+    delete dotEls[r.id];
+  }, { once: true });
+}
+
+function selectRisk(r) {
+  // Deselect previous
+  if (activeRisk) {
+    const prev = dotEls[activeRisk.id];
+    if (prev) prev.classList.remove('active-dot');
+    const prevItem = document.querySelector(`.risk-item[data-id="${activeRisk.id}"]`);
+    if (prevItem) prevItem.classList.remove('active');
+  }
+  if (activeRisk && activeRisk.id === r.id) {
+    activeRisk = null;
+    showEmptyDetail();
+    return;
+  }
+  activeRisk = r;
+  const dot = dotEls[r.id];
+  if (dot) dot.classList.add('active-dot');
+  const item = document.querySelector(`.risk-item[data-id="${r.id}"]`);
+  if (item) item.classList.add('active');
+  showDetail(r);
+}
+
+function showDetail(r) {
+  const panel = document.getElementById('detailPanel');
+  panel.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-id">${r.id} · ${r.level}</div>
+      <div class="detail-name">${r.name}</div>
+    </div>
+    <div class="detail-scores">
+      <div class="score-box">
+        <div class="score-box-label">Probability</div>
+        <div class="score-box-val" style="color:var(--muted)">${r.p}</div>
+      </div>
+      <div class="score-box">
+        <div class="score-box-label">Impact</div>
+        <div class="score-box-val" style="color:var(--muted)">${r.i}</div>
+      </div>
+      <div class="score-box" style="border-color:${r.color}50;background:${levelBg[r.level]}">
+        <div class="score-box-label" style="color:${r.color}">Score</div>
+        <div class="score-box-val" style="color:${r.color}">${r.score}</div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-label">Response Strategy</div>
+      <div class="detail-section-val">${r.response}</div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-label">Owner</div>
+      <div class="detail-section-val">${r.owner}</div>
+    </div>
+    <span class="level-badge" style="background:${levelBg[r.level]};color:${levelText[r.level]}">${r.level}</span>
+  `;
+}
+
+function showEmptyDetail() {
+  document.getElementById('detailPanel').innerHTML = '<div class="detail-empty">Click any risk in the list below — it will appear on the matrix and show details here.</div>';
+}
+
+const tooltip = document.getElementById('tooltip');
+function showTooltip(e, r) {
+  tooltip.style.display = 'block';
+  tooltip.innerHTML = `<strong style="color:${r.color}">${r.id}: ${r.name}</strong><br><span style="color:#7a7f94;font-size:11px;">P=${r.p} × I=${r.i} = ${r.score}</span>`;
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top  = (e.clientY - 8)  + 'px';
+}
+function hideTooltip() { tooltip.style.display = 'none'; }
+
+// Build risk list
+const riskList = document.getElementById('riskList');
+const sortedRisks = [...risks].sort((a,b) => b.score - a.score);
+sortedRisks.forEach(r => {
+  const item = document.createElement('div');
+  item.className = 'risk-item';
+  item.dataset.id = r.id;
+  item.style.setProperty('--item-color', r.color);
+  item.style.setProperty('--item-bg', levelBg[r.level]);
+  item.innerHTML = `
+    <div class="risk-dot-small" style="background:${r.color}"></div>
+    <div class="risk-item-text">
+      <div class="risk-item-id">${r.id}</div>
+      <div class="risk-item-name">${r.name}</div>
+    </div>
+    <div class="risk-score" style="color:${r.color}">${r.score}</div>
+  `;
+  item.addEventListener('click', () => {
+    const alreadyActive = item.classList.contains('active');
+    if (alreadyActive) {
+      item.classList.remove('active');
+      removeDot(r);
+      if (activeRisk && activeRisk.id === r.id) {
+        activeRisk = null;
+        showEmptyDetail();
+      }
+    } else {
+      addDot(r);
+      selectRisk(r);
+    }
+  });
+  riskList.appendChild(item);
+});
+
+// Reset
+document.getElementById('resetBtn').addEventListener('click', () => {
+  risks.forEach(r => removeDot(r));
+  document.querySelectorAll('.risk-item').forEach(el => el.classList.remove('active'));
+  activeRisk = null;
+  showEmptyDetail();
+});
+</script>
+</body>
+</html>
